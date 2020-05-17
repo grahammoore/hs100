@@ -2,7 +2,7 @@
 #
 # Find the local IP by munging network tool output
 
-private_ip='(127\.|172\.|10\.)'
+private_ip='(127\.|172\.)'
 ip_capture='(([0-9]{1,3}\.){3}[0-9]{1,3})'
 
 # windows has ipconfig
