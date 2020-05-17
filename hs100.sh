@@ -200,6 +200,7 @@ query_plug(){
 # plug commands
 cmd_discover(){
     check_arg "port" $port
+    check_arg "detail" $detail
     check_dependency nmap \
         "The nmap programme for mapping networks isn't"\
         "in the path, the discover command will fail"
@@ -216,7 +217,24 @@ cmd_discover(){
     # if we can't write this to /etc/hosts, echo what we found and quit
     if ! [ -w /etc/hosts ]
     then
-        echo HS100 plugs found: ${hs100ip[@]}
+        if [ $detail -eq 0 ]
+        then
+            echo HS100 plugs found: ${hs100ip[@]}
+        else
+            check_dependency jq \
+                "The jq programme is for parsing JSON"
+
+            for addr in ${hs100ip[@]}
+            do
+                json=$($0 -i $addr status 2>/dev/null)
+                if [ "$json" != "" ]
+                then
+                    model=$(echo $json | jq .system.get_sysinfo.model -)
+                    alias=$(echo $json | jq .system.get_sysinfo.alias -)
+                    printf "%s %s %s\n" $addr "$model" "$alias"
+                fi
+            done
+        fi
         return 0
     fi
 
@@ -299,7 +317,7 @@ commands=" on off check status emeter discover list "
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
 # process args with getopt(1). See `man getopt`
-args=`getopt qvi:p: $*` || { usage; exit 1; }
+args=`getopt qvd:i:p: $*` || { usage; exit 1; }
 set -- $args
 
 declare -a plugs;
@@ -309,6 +327,7 @@ do
     case "$i" in
     -q) opt_quiet=yes; shift;;
     -v) set -o xtrace; shift;;
+    -d) detail=$2; shift; shift;;
     -i) plugs=$2; shift; shift;;
     -p) port=$2; shift; shift;;
     --) shift; break;;
@@ -318,6 +337,7 @@ done
 
 : ${plugs=`my_plugs`}
 : ${port=9999}
+: ${detail=0}
 cmd=$1
 
 #check_dependencies
